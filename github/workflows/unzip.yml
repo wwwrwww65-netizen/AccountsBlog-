@@ -2,6 +2,8 @@ name: Unzip Smart Accounting Ledger
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'دفتر-الحسابات-الذكي.zip'
 
@@ -9,7 +11,7 @@ jobs:
   unzip:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # منح الصلاحيةh لتعديل وحفظ الملفات في المستودع
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,4 +24,3 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Auto-extract دفتر-الحسابات-الذكي.zip"
-
