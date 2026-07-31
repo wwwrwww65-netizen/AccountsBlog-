@@ -9,7 +9,7 @@ jobs:
   unzip:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # منح الصلاحية لتعديل وحفظ الملفات في المستودع
+      contents: write # منح الصلاحيةh لتعديل وحفظ الملفات في المستودع
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
