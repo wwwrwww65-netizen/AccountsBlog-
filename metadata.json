@@ -1,0 +1,6 @@
+{
+  "name": "مدونة الحسابات المتقدمة",
+  "description": "تطبيق مالي شامل لإدارة الديون، المصاريف اليومية، رواتب العمال، ومستلزمات المنزل مع واجهة مستخدم عربية فخمة وتقارير PDF احترافية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
