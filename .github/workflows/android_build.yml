@@ -1,0 +1,109 @@
+name: Build Signed Android APK
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build-apk:
+    name: Build and Sign Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Build Web Application
+        run: bun run build
+
+      - name: Sync Capacitor Android Project
+        run: |
+          bun run cap sync
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x android/gradlew
+
+      - name: Build Android Release (Unsigned)
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Generate Secure Keystore On-the-Fly
+        run: |
+          keytool -genkey -v -keystore release.keystore -alias mdonahhsabat -keyalg RSA -keysize 2048 -validity 10000 -storepass "Mdonah123" -keypass "Mdonah123" -dname "CN=Mdonah, OU=App, O=Mdonah, L=Riyadh, S=Riyadh, C=SA"
+
+      - name: Find and Sign Release APK
+        run: |
+          # Locate built unsigned APK
+          UNSIGNED_APK=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          echo "Found unsigned APK at: $UNSIGNED_APK"
+
+          # Find apksigner and zipalign in Android SDK
+          ZIPALIGN_PATH=$(find $ANDROID_HOME/build-tools -name "zipalign" | sort -r | head -n 1)
+          APKSIGNER_PATH=$(find $ANDROID_HOME/build-tools -name "apksigner" | sort -r | head -n 1)
+
+          echo "Using zipalign at: $ZIPALIGN_PATH"
+          echo "Using apksigner at: $APKSIGNER_PATH"
+
+          # Align the APK
+          $ZIPALIGN_PATH -v 4 "$UNSIGNED_APK" app-aligned.apk
+
+          # Sign the APK
+          $APKSIGNER_PATH sign --ks release.keystore --ks-key-alias mdonahhsabat --ks-pass pass:Mdonah123 --key-pass pass:Mdonah123 --out mdonah-accounts-signed.apk app-aligned.apk
+
+          # Verify the signature
+          $APKSIGNER_PATH verify mdonah-accounts-signed.apk
+
+      - name: Document Keystore & Build Information
+        run: |
+          echo "### 📱 تفاصيل ملف الـ APK وأرقام الإصدار" > release-info.md
+          echo "" >> release-info.md
+          echo "تم بناء ملف الـ APK وتوقيعه رقمياً بنجاح عبر GitHub Actions! 🎉" >> release-info.md
+          echo "" >> release-info.md
+          echo "#### 🔑 تفاصيل مفتاح التوقيع الرقمي (Keystore):" >> release-info.md
+          echo "- **كلمة مرور المستودع (Store Password):** \`Mdonah123\`" >> release-info.md
+          echo "- **اسم مستعار للمفتاح (Key Alias):** \`mdonahhsabat\`" >> release-info.md
+          echo "- **كلمة مرور المفتاح (Key Password):** \`Mdonah123\`" >> release-info.md
+          echo "- **الخوارزمية:** \`RSA 2048-bit\`" >> release-info.md
+          echo "- **الصلاحية:** \`10,000 يوم\` (متوافق تماماً مع متطلبات Google Play)" >> release-info.md
+          echo "" >> release-info.md
+          echo "#### 📦 تفاصيل التطبيق:" >> release-info.md
+          echo "- **اسم التطبيق:** مدونة الحسابات" >> release-info.md
+          echo "- **اسم الحزمة (Package ID):** \`com.mdonahhsabat\`" >> release-info.md
+          echo "- **الإصدار:** \`1.0.0\` (كود بناء \`1\`)" >> release-info.md
+          echo "- **التوافق:** متوافق مع كافة أحجام الشاشات وجميع إصدارات أندرويد (من Android 5.0 Lollipop حتى أحدث إصدار Android 14+)" >> release-info.md
+
+      - name: Upload Signed APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdonah-accounts-signed-apk
+          path: mdonah-accounts-signed.apk
+
+      - name: Upload Release Documentation Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-info
+          path: release-info.md
